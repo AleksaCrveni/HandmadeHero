@@ -1,2 +1,8 @@
 *.sln
 .vs
+
+*.exe
+*.obj
+*.ilk
+*.pdb
+build
