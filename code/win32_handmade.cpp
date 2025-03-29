@@ -16,26 +16,29 @@ typedef uint16_t uint16;
 typedef uint32_t uint32;
 typedef uint64_t uint64;
 
-// global for now
-global_variable bool Running;
-global_variable BITMAPINFO BitmapInfo;
-global_variable void *BitmapMemory;
-global_variable int BitmapWidth;
-global_variable int BitmapHeight;
-global_variable int BytesPerPixel = 4;
-internal void RenderWeirdGradient(int BlueOffset, int GreenOffset)
+struct win32_offscreen_buffer
 {
-	int Width = BitmapWidth;
-	int Height = BitmapHeight;
+	BITMAPINFO Info;
+	void *Memory;
+	int Width;
+	int Height;
+	int Pitch;
+	int BytesPerPixel;
+};
 
-	int Pitch = Width*BytesPerPixel;
+global_variable bool Running;
+global_variable win32_offscreen_buffer GlobalBackBuffer;
+
+internal void RenderWeirdGradient(win32_offscreen_buffer Buffer, int BlueOffset, int GreenOffset)
+{
+	// TODO lets see what o ptimized does
 	// byte array pretty much
-	uint8 *Row = (uint8 *) BitmapMemory;
-	for (int Y = 0; Y < BitmapHeight; ++Y)
+	uint8 *Row = (uint8 *)Buffer.Memory;
+	for (int Y = 0; Y < Buffer.Height; ++Y)
 	{
 		// uint8 *Pixel  = (uint8 *)Row;
 		uint32 *Pixel = (uint32 *)Row;
-		for (int X = 0; X < BitmapWidth; ++X)
+		for (int X = 0; X < Buffer.Width; ++X)
 		{
 			/* 8 - bit red 8 bits of green 8 bits of blue and 8 bits of padding
 			Pixel in memory: RR GG BB xx
@@ -77,52 +80,56 @@ internal void RenderWeirdGradient(int BlueOffset, int GreenOffset)
 		}
 
 		// Pointer arithimic, pretty much moving pointer to next row (memory is 1D but we think of it as 2D since its bitmap)
-		Row += Pitch;
+		Row += Buffer.Pitch;
 	}
 	
 }
 
 // DIB => Device Independent Bit 
-internal void Win32ResizeDIBSection(int Width, int Height)
+internal void Win32ResizeDIBSection(win32_offscreen_buffer *Buffer, int Width, int Height)
 {
 
 	// have to free memory if we are going to allocate again
 	// and we have to allocate because we are resizing window so width and height of our bitmap chjanges
-	if (BitmapMemory)
+	if (Buffer->Memory)
 	{
-		VirtualFree(BitmapMemory, 0, MEM_RELEASE);
+		VirtualFree(Buffer->Memory, 0, MEM_RELEASE);
 	}
 
-	BitmapWidth = Width;
-	BitmapHeight = Height;
+	Buffer->Width = Width;
+	Buffer->Height = Height;
+	Buffer->BytesPerPixel = 4;
 
-  BitmapInfo.bmiHeader.biSize = sizeof(BitmapInfo.bmiHeader);
-	BitmapInfo.bmiHeader.biWidth = BitmapWidth;
+  Buffer->Info.bmiHeader.biSize = sizeof(Buffer->Info.bmiHeader);
+	Buffer->Info.bmiHeader.biWidth = Buffer->Width;
 	// negative so bitmap is top to btottom and origin is upper left corner
-	BitmapInfo.bmiHeader.biHeight = -BitmapHeight;
-	BitmapInfo.bmiHeader.biPlanes = 1;
+	Buffer->Info.bmiHeader.biHeight = -Buffer->Height;
+	Buffer->Info.bmiHeader.biPlanes = 1;
 	// 8 bits each for Red, Green, Blue and 8 extra padded for alignment on 4B boundaries 
-	BitmapInfo.bmiHeader.biBitCount = 32;
-	BitmapInfo.bmiHeader.biCompression = BI_RGB;
+	Buffer->Info.bmiHeader.biBitCount = 32;
+	Buffer->Info.bmiHeader.biCompression = BI_RGB;
 	// don't need to set these to 0 because struct on init sets values to 0
 	/*
-	BitmapInfo.bmiHeader.biSizeImage = 0;
-	BitmapInfo.bmiHeader.biXPelsPerMeter = 0;
-	BitmapInfo.bmiHeader.biYPelsPerMeter = 0;
-	BitmapInfo.bmiHeader.biClrUsed = 0;
-	BitmapInfo.bmiHeader.biClrImportant = 0;
+	Info.bmiHeader.biSizeImage = 0;
+	Info.bmiHeader.biXPelsPerMeter = 0;
+	Info.bmiHeader.biYPelsPerMeter = 0;
+	Info.bmiHeader.biClrUsed = 0;
+	Info.bmiHeader.biClrImportant = 0;
 	*/
 	// because we set biBitCount to 32 bits (4B) for alignment
-	int BitmapMemorySize = (Width * Height) * BytesPerPixel;
-	BitmapMemory = VirtualAlloc(0,BitmapMemorySize, MEM_COMMIT, PAGE_READWRITE);
-	
+	int BitmapMemorySize = (Buffer->Width * Buffer->Height) * Buffer->BytesPerPixel;
+	Buffer->Memory = VirtualAlloc(0,BitmapMemorySize, MEM_COMMIT, PAGE_READWRITE);
+	Buffer->Pitch = Width*Buffer->BytesPerPixel;
 	// TODO: clear to black maybe 
 }
 
-internal void Win32UpdateWindow(HDC DeviceContext, RECT *ClientRect, int X, int Y, int Width, int Height)
+internal void Win32CopyBufferToWindow(
+	HDC DeviceContext, RECT ClientRect,
+	win32_offscreen_buffer Buffer,
+	int X, int Y, int Width, int Height)
 {
-	int WindowWidth = ClientRect->right - ClientRect->left;
-	int WindowHeight = ClientRect->bottom - ClientRect->top;
+	int WindowWidth = ClientRect.right - ClientRect.left;
+	int WindowHeight = ClientRect.bottom - ClientRect.top;
 
 	// Pretty much copy rectangle from our buffer to the screen
 	// That is hwy source and dest coords are the same
@@ -132,10 +139,10 @@ internal void Win32UpdateWindow(HDC DeviceContext, RECT *ClientRect, int X, int 
 		X,Y,Width,Height,
 		X,Y,Width,Height,
 		*/
-		0, 0, BitmapWidth, BitmapHeight,
+		0, 0, Buffer.Width, Buffer.Height,
 		0, 0, WindowWidth, WindowHeight,
-		BitmapMemory,
-		&BitmapInfo,
+		Buffer.Memory,
+		&Buffer.Info,
 		DIB_RGB_COLORS,
 		SRCCOPY);
 }
@@ -155,7 +162,7 @@ LRESULT CALLBACK Win32MainWindowCallback(
 			GetClientRect(Window, &ClientRect);
 			int Height = ClientRect.bottom - ClientRect.top;
 			int Width = ClientRect.right - ClientRect.left;
-			Win32ResizeDIBSection(Width, Height);
+			Win32ResizeDIBSection(&GlobalBackBuffer, Width, Height);
 		} break;
 		case WM_DESTROY:
 		{
@@ -185,7 +192,7 @@ LRESULT CALLBACK Win32MainWindowCallback(
 
 			RECT ClientRect;
 			GetClientRect(Window, &ClientRect);
-			Win32UpdateWindow(DeviceContext, &ClientRect, X, Y, Width, Height);
+			Win32CopyBufferToWindow(DeviceContext, ClientRect, GlobalBackBuffer , X, Y, Width, Height);
 			EndPaint(Window, &Paint);
 			
 		} break;
@@ -255,14 +262,14 @@ int WINAPI WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, PSTR CommandLine,
 					DispatchMessage(&Message);
 				}
 
-				RenderWeirdGradient(BlueOffset, GreenOffset);
+				RenderWeirdGradient(GlobalBackBuffer, BlueOffset, GreenOffset);
 				HDC DeviceContext = GetDC(Window);
 				RECT ClientRect;
 				GetClientRect(Window, &ClientRect);
 				int WindowHeight = ClientRect.bottom - ClientRect.top;
 				int WindowWidth = ClientRect.right - ClientRect.left;
 
-				Win32UpdateWindow(DeviceContext, &ClientRect, 0, 0, WindowWidth, WindowHeight);
+				Win32CopyBufferToWindow(DeviceContext, ClientRect, GlobalBackBuffer, 0, 0, WindowWidth, WindowHeight);
 				ReleaseDC(Window, DeviceContext);
 				++BlueOffset;
 				GreenOffset += 2;
