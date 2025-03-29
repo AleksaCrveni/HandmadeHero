@@ -26,8 +26,26 @@ struct win32_offscreen_buffer
 	int BytesPerPixel;
 };
 
+struct win32_window_dimension
+{
+	int Height;
+	int Width;
+};
+
 global_variable bool Running;
 global_variable win32_offscreen_buffer GlobalBackBuffer;
+
+internal win32_window_dimension Win32GetWindowDimension(HWND Window)
+{
+	win32_window_dimension Result;
+	RECT ClientRect;
+	GetClientRect(Window, &ClientRect);
+	Result.Height = ClientRect.bottom - ClientRect.top;
+	Result.Width = ClientRect.right - ClientRect.left;
+	
+	return Result;
+}
+
 
 internal void RenderWeirdGradient(win32_offscreen_buffer Buffer, int BlueOffset, int GreenOffset)
 {
@@ -124,13 +142,11 @@ internal void Win32ResizeDIBSection(win32_offscreen_buffer *Buffer, int Width, i
 }
 
 internal void Win32CopyBufferToWindow(
-	HDC DeviceContext, RECT ClientRect,
+	HDC DeviceContext, int WindowWidth,  int WindowHeight,
 	win32_offscreen_buffer Buffer,
 	int X, int Y, int Width, int Height)
 {
-	int WindowWidth = ClientRect.right - ClientRect.left;
-	int WindowHeight = ClientRect.bottom - ClientRect.top;
-
+	// TODO: Fix aspect ratio
 	// Pretty much copy rectangle from our buffer to the screen
 	// That is hwy source and dest coords are the same
 	StretchDIBits(
@@ -139,8 +155,8 @@ internal void Win32CopyBufferToWindow(
 		X,Y,Width,Height,
 		X,Y,Width,Height,
 		*/
-		0, 0, Buffer.Width, Buffer.Height,
 		0, 0, WindowWidth, WindowHeight,
+		0, 0, Buffer.Width, Buffer.Height,
 		Buffer.Memory,
 		&Buffer.Info,
 		DIB_RGB_COLORS,
@@ -158,11 +174,7 @@ LRESULT CALLBACK Win32MainWindowCallback(
 	{
 		case WM_SIZE:
 		{
-			RECT ClientRect;
-			GetClientRect(Window, &ClientRect);
-			int Height = ClientRect.bottom - ClientRect.top;
-			int Width = ClientRect.right - ClientRect.left;
-			Win32ResizeDIBSection(&GlobalBackBuffer, Width, Height);
+			
 		} break;
 		case WM_DESTROY:
 		{
@@ -190,9 +202,10 @@ LRESULT CALLBACK Win32MainWindowCallback(
 			int Height = Paint.rcPaint.bottom  - Paint.rcPaint.top;
 			int Width = Paint.rcPaint.right - Paint.rcPaint.left;
 
-			RECT ClientRect;
-			GetClientRect(Window, &ClientRect);
-			Win32CopyBufferToWindow(DeviceContext, ClientRect, GlobalBackBuffer , X, Y, Width, Height);
+			win32_window_dimension Dimension = Win32GetWindowDimension(Window);
+			Win32CopyBufferToWindow(
+				DeviceContext, Dimension.Width, Dimension.Height,
+				GlobalBackBuffer , X, Y, Width, Height);
 			EndPaint(Window, &Paint);
 			
 		} break;
@@ -212,6 +225,8 @@ int WINAPI WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, PSTR CommandLine,
 {
 	// Init struct with 0 values
 	WNDCLASS WindowClass = {};
+
+	Win32ResizeDIBSection(&GlobalBackBuffer, 1280, 720);
 
 	// this will pain entire window when streching window horizontally or vertically
 	WindowClass.style = CS_HREDRAW|CS_VREDRAW;
@@ -265,11 +280,11 @@ int WINAPI WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, PSTR CommandLine,
 				RenderWeirdGradient(GlobalBackBuffer, BlueOffset, GreenOffset);
 				HDC DeviceContext = GetDC(Window);
 				RECT ClientRect;
-				GetClientRect(Window, &ClientRect);
-				int WindowHeight = ClientRect.bottom - ClientRect.top;
-				int WindowWidth = ClientRect.right - ClientRect.left;
+				win32_window_dimension Dimension = Win32GetWindowDimension(Window);
 
-				Win32CopyBufferToWindow(DeviceContext, ClientRect, GlobalBackBuffer, 0, 0, WindowWidth, WindowHeight);
+				Win32CopyBufferToWindow(
+					DeviceContext, Dimension.Width, Dimension.Height,
+					GlobalBackBuffer, 0, 0, Dimension.Width, Dimension.Height);
 				ReleaseDC(Window, DeviceContext);
 				++BlueOffset;
 				GreenOffset += 2;
