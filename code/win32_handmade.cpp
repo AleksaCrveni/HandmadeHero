@@ -32,7 +32,7 @@ struct win32_window_dimension
 	int Width;
 };
 
-global_variable bool Running;
+global_variable bool GlobalRunning;
 global_variable win32_offscreen_buffer GlobalBackBuffer;
 
 internal win32_window_dimension Win32GetWindowDimension(HWND Window)
@@ -179,14 +179,14 @@ LRESULT CALLBACK Win32MainWindowCallback(
 		case WM_DESTROY:
 		{
 			// TODO: Hadle with error to the user
-			Running = false;
+			GlobalRunning = false;
 		} break;
 		case WM_CLOSE:
 		{
 			// PostQuitMessage(0); can do this to post quit message to our queue, but can also do static var;
 			
 			// TODO: Hadle with message to the user
-			Running = false;
+			GlobalRunning = false;
 		} break;
 		case WM_ACTIVATEAPP:
 		{
@@ -229,7 +229,7 @@ int WINAPI WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, PSTR CommandLine,
 	Win32ResizeDIBSection(&GlobalBackBuffer, 1280, 720);
 
 	// this will pain entire window when streching window horizontally or vertically
-	WindowClass.style = CS_HREDRAW|CS_VREDRAW;
+	WindowClass.style = CS_HREDRAW|CS_VREDRAW|CS_OWNDC;
 	//Pointer to the function (pretty much registering callback)
 	WindowClass.lpfnWndProc = Win32MainWindowCallback;
 	WindowClass.hInstance = Instance;
@@ -253,12 +253,15 @@ int WINAPI WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, PSTR CommandLine,
 					0);
 		if (Window)
 		{
+			// Can do this sicnce we add CS_OWNDC
+			HDC DeviceContext = GetDC(Window);
 			// Have to start pulling messages from queue or kernel wont sent it
 			MSG Message;
-			Running = true;
+			GlobalRunning = true;
+			
 			int BlueOffset = 0;
 			int GreenOffset = 0;
-			while (Running)
+			while (GlobalRunning)
 			{
 				
 				// If 0 passed as handle it will retrieve any messages that belong to us
@@ -271,21 +274,19 @@ int WINAPI WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, PSTR CommandLine,
 					// Check if someone else sent us quit message
 					if (Message.message == WM_QUIT) 
 					{
-						Running = false;
+						GlobalRunning = false;
 					}
 					TranslateMessage(&Message);
 					DispatchMessage(&Message);
 				}
 
 				RenderWeirdGradient(GlobalBackBuffer, BlueOffset, GreenOffset);
-				HDC DeviceContext = GetDC(Window);
 				RECT ClientRect;
 				win32_window_dimension Dimension = Win32GetWindowDimension(Window);
 
 				Win32CopyBufferToWindow(
 					DeviceContext, Dimension.Width, Dimension.Height,
 					GlobalBackBuffer, 0, 0, Dimension.Width, Dimension.Height);
-				ReleaseDC(Window, DeviceContext);
 				++BlueOffset;
 				GreenOffset += 2;
 			}
