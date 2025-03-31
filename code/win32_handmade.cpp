@@ -23,7 +23,6 @@ struct win32_offscreen_buffer
 	int Width;
 	int Height;
 	int Pitch;
-	int BytesPerPixel;
 };
 
 struct win32_window_dimension
@@ -116,7 +115,7 @@ internal void Win32ResizeDIBSection(win32_offscreen_buffer *Buffer, int Width, i
 
 	Buffer->Width = Width;
 	Buffer->Height = Height;
-	Buffer->BytesPerPixel = 4;
+	int BytesPerPixel = 4;
 
   Buffer->Info.bmiHeader.biSize = sizeof(Buffer->Info.bmiHeader);
 	Buffer->Info.bmiHeader.biWidth = Buffer->Width;
@@ -135,9 +134,9 @@ internal void Win32ResizeDIBSection(win32_offscreen_buffer *Buffer, int Width, i
 	Info.bmiHeader.biClrImportant = 0;
 	*/
 	// because we set biBitCount to 32 bits (4B) for alignment
-	int BitmapMemorySize = (Buffer->Width * Buffer->Height) * Buffer->BytesPerPixel;
+	int BitmapMemorySize = (Buffer->Width * Buffer->Height) * BytesPerPixel;
 	Buffer->Memory = VirtualAlloc(0,BitmapMemorySize, MEM_COMMIT, PAGE_READWRITE);
-	Buffer->Pitch = Width*Buffer->BytesPerPixel;
+	Buffer->Pitch = Width*BytesPerPixel;
 	// TODO: clear to black maybe 
 }
 
