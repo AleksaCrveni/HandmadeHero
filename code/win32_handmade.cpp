@@ -143,8 +143,7 @@ internal void Win32ResizeDIBSection(win32_offscreen_buffer *Buffer, int Width, i
 
 internal void Win32CopyBufferToWindow(
 	HDC DeviceContext, int WindowWidth,  int WindowHeight,
-	win32_offscreen_buffer Buffer,
-	int X, int Y, int Width, int Height)
+	win32_offscreen_buffer Buffer)
 {
 	// TODO: Fix aspect ratio
 	// Pretty much copy rectangle from our buffer to the screen
@@ -172,10 +171,6 @@ LRESULT CALLBACK Win32MainWindowCallback(
 	LRESULT Result = 0;
 	switch (Message)
 	{
-		case WM_SIZE:
-		{
-			
-		} break;
 		case WM_DESTROY:
 		{
 			// TODO: Hadle with error to the user
@@ -205,7 +200,7 @@ LRESULT CALLBACK Win32MainWindowCallback(
 			win32_window_dimension Dimension = Win32GetWindowDimension(Window);
 			Win32CopyBufferToWindow(
 				DeviceContext, Dimension.Width, Dimension.Height,
-				GlobalBackBuffer , X, Y, Width, Height);
+				GlobalBackBuffer);
 			EndPaint(Window, &Paint);
 			
 		} break;
@@ -286,7 +281,7 @@ int WINAPI WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, PSTR CommandLine,
 
 				Win32CopyBufferToWindow(
 					DeviceContext, Dimension.Width, Dimension.Height,
-					GlobalBackBuffer, 0, 0, Dimension.Width, Dimension.Height);
+					GlobalBackBuffer);
 				++BlueOffset;
 				GreenOffset += 2;
 			}
