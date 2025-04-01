@@ -211,6 +211,58 @@ LRESULT CALLBACK Win32MainWindowCallback(
 			// TODO: Hadle with error to the user
 			GlobalRunning = false;
 		} break;
+		case WM_SYSKEYDOWN:
+		case WM_SYSKEYUP:
+		case WM_KEYDOWN:
+		case WM_KEYUP:
+		{
+			uint32 VkCode = WParam;
+			// 30th bit is this
+			// comparsion in first () will return value and we want to turn it into 1 or 0 ( bool)
+			// so we compare to 0 after
+			bool WasDown = ((LParam & (1 << 30)) != 0);
+			// 31st bit is always 0 for SYSKEYDOWN
+			bool IsDown = ((LParam & (1 << 31)) == 0);
+			if (WasDown != IsDown)
+			{
+				if (VkCode == 'W')
+				{
+				}
+				else if (VkCode == 'A')
+				{	
+				}
+				else if (VkCode == 'S')
+				{	
+				}
+				else if (VkCode == 'D')
+				{	
+				}
+				else if (VkCode == 'Q')
+				{	
+				}
+				else if (VkCode == 'E')
+				{	
+				}
+				else if (VkCode == VK_UP)
+				{
+				}
+				else if (VkCode == VK_LEFT)
+				{
+				}
+				else if (VkCode == VK_DOWN)
+				{
+				}
+				else if (VkCode == VK_RIGHT)
+				{
+				}
+				else if (VkCode == VK_ESCAPE)
+				{
+				}
+				else if (VkCode == VK_SPACE)
+				{
+				}
+			}
+		} break;
 		case WM_CLOSE:
 		{
 			// PostQuitMessage(0); can do this to post quit message to our queue, but can also do static var;
