@@ -31,6 +31,28 @@ struct win32_window_dimension
 	int Width;
 };
 
+// Support for XInputGetState
+#define X_INPUT_GET_STATE(name) DWORD WINAPI name(DWORD dwUserIndex, XINPUT_STATE *pState)
+typedef X_INPUT_GET_STATE(x_input_get_state); 
+X_INPUT_GET_STATE(XInputGetStateStub)
+{
+	return 0;
+}
+global_variable x_input_get_state *XInputGetState_ = XInputGetStateStub;
+// Support for XInputSetState
+#define X_INPUT_SET_STATE(name) DWORD WINAPI name(DWORD dwUserIndex, XINPUT_VIBRATION *pVibration)
+typedef X_INPUT_SET_STATE(x_input_set_state); 
+
+X_INPUT_SET_STATE(XInputSetStateStub)
+{
+	return 0;
+}
+// pointer to external function
+
+global_variable x_input_set_state *XInputSetState_ = XInputSetStateStub;
+#define XInputGetState XInputGetState_
+#define XInputSetState XInputSetState_
+
 global_variable bool GlobalRunning;
 global_variable win32_offscreen_buffer GlobalBackBuffer;
 
@@ -275,7 +297,7 @@ int WINAPI WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, PSTR CommandLine,
 				}
 
 				// TODO: Should we poll this more frequently?
-				for (DWORD ControllerIndex = 0; ControllerIndex < XUSER_MAX_COUNT; ControllerIndex++ )
+				for (DWORD ControllerIndex = 0; ControllerIndex < XUSER_MAX_COUNT; ControllerIndex++)
 				{
 					XINPUT_STATE ControllerState;
 					if (XInputGetState(ControllerIndex, &ControllerState) == ERROR_SUCCESS)
