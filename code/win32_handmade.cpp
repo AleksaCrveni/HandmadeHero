@@ -38,7 +38,10 @@ X_INPUT_GET_STATE(XInputGetStateStub)
 {
 	return 0;
 }
+// pointer to external function
 global_variable x_input_get_state *XInputGetState_ = XInputGetStateStub;
+#define XInputGetState XInputGetState_
+
 // Support for XInputSetState
 #define X_INPUT_SET_STATE(name) DWORD WINAPI name(DWORD dwUserIndex, XINPUT_VIBRATION *pVibration)
 typedef X_INPUT_SET_STATE(x_input_set_state); 
@@ -47,11 +50,22 @@ X_INPUT_SET_STATE(XInputSetStateStub)
 {
 	return 0;
 }
-// pointer to external function
-
 global_variable x_input_set_state *XInputSetState_ = XInputSetStateStub;
-#define XInputGetState XInputGetState_
 #define XInputSetState XInputSetState_
+
+internal void Win32LoadXInput()
+{
+	// We try to load xinput dll ( some machnes may not have andd you dont need if you want to play with keyboard and mouse)
+	// so if can't be loaded program will still work because we hgave defined default function stubs
+	HMODULE XInputLibrary = LoadLibrary("xinput1_3.dll");
+	if (XInputLibrary)
+	{
+		// GetProcAddress doesn't  know what is signature of function it tries to load
+		// So we have to cast it out function signature
+		XInputGetState = (x_input_get_state *)GetProcAddress(XInputLibrary, "XInputGetState");
+		XInputSetState = (x_input_set_state *)GetProcAddress(XInputLibrary, "XInputSetState");
+	}
+}
 
 global_variable bool GlobalRunning;
 global_variable win32_offscreen_buffer GlobalBackBuffer;
@@ -239,6 +253,7 @@ LRESULT CALLBACK Win32MainWindowCallback(
 
 int WINAPI WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, PSTR CommandLine, int ShowCode)
 {
+	Win32LoadXInput();
 	// Init struct with 0 values
 	WNDCLASS WindowClass = {};
 
@@ -300,7 +315,7 @@ int WINAPI WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, PSTR CommandLine,
 				for (DWORD ControllerIndex = 0; ControllerIndex < XUSER_MAX_COUNT; ControllerIndex++)
 				{
 					XINPUT_STATE ControllerState;
-					if (XInputGetState(ControllerIndex, &ControllerState) == ERROR_SUCCESS)
+ 					if (XInputGetState(ControllerIndex, &ControllerState) == ERROR_SUCCESS)
 					{
 						// this controller is plugged In
 						XINPUT_GAMEPAD *Pad = &ControllerState.Gamepad;
