@@ -69,7 +69,8 @@ internal void Win32LoadXInput()
 
 global_variable bool GlobalRunning;
 global_variable win32_offscreen_buffer GlobalBackBuffer;
-
+global_variable int BlueOffset = 0;
+global_variable int GreenOffset = 0;
 internal win32_window_dimension Win32GetWindowDimension(HWND Window)
 {
 	win32_window_dimension Result;
@@ -229,13 +230,13 @@ LRESULT CALLBACK Win32MainWindowCallback(
 				{
 				}
 				else if (VkCode == 'A')
-				{	
+				{
 				}
 				else if (VkCode == 'S')
-				{	
+				{
 				}
 				else if (VkCode == 'D')
-				{	
+				{
 				}
 				else if (VkCode == 'Q')
 				{	
@@ -342,8 +343,7 @@ int WINAPI WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, PSTR CommandLine,
 			MSG Message;
 			GlobalRunning = true;
 			
-			int BlueOffset = 0;
-			int GreenOffset = 0;
+			
 			while (GlobalRunning)
 			{
 				
