@@ -36,7 +36,7 @@ struct win32_window_dimension
 typedef X_INPUT_GET_STATE(x_input_get_state); 
 X_INPUT_GET_STATE(XInputGetStateStub)
 {
-	return 0;
+	return ERROR_DEVICE_NOT_CONNECTED;
 }
 // pointer to external function
 global_variable x_input_get_state *XInputGetState_ = XInputGetStateStub;
@@ -48,7 +48,7 @@ typedef X_INPUT_SET_STATE(x_input_set_state);
 
 X_INPUT_SET_STATE(XInputSetStateStub)
 {
-	return 0;
+	return ERROR_DEVICE_NOT_CONNECTED;
 }
 global_variable x_input_set_state *XInputSetState_ = XInputSetStateStub;
 #define XInputSetState XInputSetState_
@@ -57,7 +57,13 @@ internal void Win32LoadXInput()
 {
 	// We try to load xinput dll ( some machnes may not have andd you dont need if you want to play with keyboard and mouse)
 	// so if can't be loaded program will still work because we hgave defined default function stubs
-	HMODULE XInputLibrary = LoadLibrary("xinput1_3.dll");
+
+	HMODULE XInputLibrary = LoadLibrary("xinput1_4.dll");
+	if (!XInputLibrary)
+	{
+		XInputLibrary = LoadLibrary("xinput1_3.dll");
+	}
+
 	if (XInputLibrary)
 	{
 		// GetProcAddress doesn't  know what is signature of function it tries to load
@@ -262,6 +268,12 @@ LRESULT CALLBACK Win32MainWindowCallback(
 				else if (VkCode == VK_SPACE)
 				{
 				}
+			}
+
+			bool IsAltKeyDown = ((LParam & (1 << 29)) == 1);
+			if (VkCode == VK_F4 && IsAltKeyDown)
+			{
+				GlobalRunning = false;
 			}
 		} break;
 		case WM_CLOSE:
