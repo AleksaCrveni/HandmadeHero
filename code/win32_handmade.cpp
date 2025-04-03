@@ -2,6 +2,8 @@
 #include <winuser.h>
 #include <stdint.h>
 #include <xinput.h>
+#include <dsound.h>
+
 #define internal static 
 #define local_persist static
 #define global_variable static
@@ -31,6 +33,11 @@ struct win32_window_dimension
 	int Height;
 	int Width;
 };
+
+// Support for DirectSound
+#define DIRECT_SOUND_CREATE(name) HRESULT WINAPI name(LPGUID lpGuid, LPDIRECTSOUND *ppDS, LPUNKNOWN  pUnkOuter)
+typedef DIRECT_SOUND_CREATE(direct_sound_create);
+// Don't need stub since we only call it when we know it exists
 
 // Support for XInputGetState
 #define X_INPUT_GET_STATE(name) DWORD WINAPI name(DWORD dwUserIndex, XINPUT_STATE *pState)
@@ -62,6 +69,7 @@ internal void Win32LoadXInput()
 	HMODULE XInputLibrary = LoadLibrary("xinput1_4.dll");
 	if (!XInputLibrary)
 	{
+		// TODO Diagnostics
 		XInputLibrary = LoadLibrary("xinput1_3.dll");
 	}
 
@@ -71,6 +79,11 @@ internal void Win32LoadXInput()
 		// So we have to cast it out function signature
 		XInputGetState = (x_input_get_state *)GetProcAddress(XInputLibrary, "XInputGetState");
 		XInputSetState = (x_input_set_state *)GetProcAddress(XInputLibrary, "XInputSetState");
+		// TODO Diagnostics
+	}
+	else 
+	{
+		// TODO Diagnostics
 	}
 }
 
@@ -88,6 +101,40 @@ internal win32_window_dimension Win32GetWindowDimension(HWND Window)
 	
 	return Result;
 }
+
+internal void Win32InitSound(HWND Window)
+{
+	// Load Library
+	HMODULE DSoundLibrary = LoadLibrary("dsound.dll");
+	if (DSoundLibrary)
+	{
+		direct_sound_create *DirectSoundCreate = (direct_sound_create *)GetProcAddress(DSoundLibrary, "DirectSoundCreate");
+		LPDIRECTSOUND DirectSound;
+		// SUCCEEDED is directx macro
+		if (DirectSoundCreate &&  SUCCEEDED(DirectSoundCreate(0, &DirectSound, 0)))
+		{
+			if (SUCCEEDED(DirectSound->SetCooperativeLevel(Window, DSSCL_PRIORITY)))
+			{
+				int i =0;
+			}
+			else 
+			{
+				// TODO Diagnostics
+			}
+			
+		}
+		else 
+		{
+			// TODO Diagnostics
+		}
+	}
+	
+	// Get DirectSound object -- cooperative mode
+	// "Create" primary buffer so we can set mode of it 
+	// Create secondary buffer
+	// Start it playing 
+}
+
 
 
 internal void RenderWeirdGradient(win32_offscreen_buffer *Buffer, int BlueOffset, int GreenOffset)
