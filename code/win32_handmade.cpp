@@ -102,7 +102,7 @@ internal win32_window_dimension Win32GetWindowDimension(HWND Window)
 	return Result;
 }
 
-internal void Win32InitSound(HWND Window)
+internal void Win32InitSound(HWND Window, int32 SamplesPerSecond, int32 BufferSize)
 {
 	// Load Library
 	HMODULE DSoundLibrary = LoadLibrary("dsound.dll");
@@ -113,26 +113,65 @@ internal void Win32InitSound(HWND Window)
 		// SUCCEEDED is directx macro
 		if (DirectSoundCreate &&  SUCCEEDED(DirectSoundCreate(0, &DirectSound, 0)))
 		{
+			WAVEFORMATEX WaveFormat;
+			WaveFormat.wFormatTag = WAVE_FORMAT_PCM;
+			WaveFormat.nChannels = 2;
+			WaveFormat.nSamplesPerSec = SamplesPerSecond;
+			WaveFormat.wBitsPerSample = 16;
+			// from docs
+			WaveFormat.nBlockAlign = (WaveFormat.nChannels * WaveFormat.wBitsPerSample) / 8;
+			// from docs
+			WaveFormat.nAvgBytesPerSec = WaveFormat.nSamplesPerSec * WaveFormat.nBlockAlign;
+			WaveFormat.cbSize = 0;
+
+			// Get DirectSound object -- cooperative mode
 			if (SUCCEEDED(DirectSound->SetCooperativeLevel(Window, DSSCL_PRIORITY)))
 			{
-				int i =0;
+				DSBUFFERDESC BufferDescription = {};
+				BufferDescription.dwSize = sizeof(BufferDescription);
+				BufferDescription.dwFlags = DSBCAPS_PRIMARYBUFFER;
+				LPDIRECTSOUNDBUFFER PrimaryBuffer;
+				// "Create" primary buffer so we can set mode of it 
+				if (SUCCEEDED(DirectSound->CreateSoundBuffer(&BufferDescription, &PrimaryBuffer, 0)))
+				{
+					
+					if (SUCCEEDED(PrimaryBuffer->SetFormat(&WaveFormat)))
+					{
+						// we set the ofrmat fimally
+						int i = 0;
+					}
+					else
+					{
+						// TODO Diagnostics
+					}
+
+				}
 			}
 			else 
 			{
 				// TODO Diagnostics
 			}
 			
+			DSBUFFERDESC BufferDescription = {};
+			BufferDescription.dwSize = sizeof(BufferDescription);
+			BufferDescription.dwFlags = DSBCAPS_PRIMARYBUFFER;
+			BufferDescription.dwBufferBytes = BufferSize;
+			BufferDescription.lpwfxFormat = &WaveFormat;
+			LPDIRECTSOUNDBUFFER SecondaryBuffer;
+			// Create secondary buffer
+			if (SUCCEEDED(DirectSound->CreateSoundBuffer(&BufferDescription, &SecondaryBuffer, 0)))
+			{
+				int i = 0;
+			}
+			
+			
+
 		}
 		else 
 		{
 			// TODO Diagnostics
 		}
 	}
-	
-	// Get DirectSound object -- cooperative mode
-	// "Create" primary buffer so we can set mode of it 
-	// Create secondary buffer
-	// Start it playing 
 }
 
 
@@ -226,7 +265,7 @@ internal void Win32ResizeDIBSection(win32_offscreen_buffer *Buffer, int Width, i
 	*/
 	// because we set biBitCount to 32 bits (4B) for alignment
 	int BitmapMemorySize = (Buffer->Width * Buffer->Height) * BytesPerPixel;
-	Buffer->Memory = VirtualAlloc(0,BitmapMemorySize, MEM_COMMIT, PAGE_READWRITE);
+	Buffer->Memory = VirtualAlloc(0,BitmapMemorySize, MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
 	Buffer->Pitch = Width*BytesPerPixel;
 	// TODO: clear to black maybe 
 }
@@ -403,7 +442,7 @@ int WINAPI WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, PSTR CommandLine,
 			MSG Message;
 			GlobalRunning = true;
 			
-			
+			Win32InitSound(Window, 48000, 48000*sizeof(int16)*2);
 			while (GlobalRunning)
 			{
 				
