@@ -19,8 +19,6 @@ typedef uint16_t uint16;
 typedef uint32_t uint32;
 typedef uint64_t uint64;
 
-
-
 struct win32_offscreen_buffer
 {
 	BITMAPINFO Info;
@@ -95,7 +93,6 @@ internal void Win32LoadXInput()
 	}
 }
 
-
 internal win32_window_dimension Win32GetWindowDimension(HWND Window)
 {
 	win32_window_dimension Result;
@@ -167,9 +164,6 @@ internal void Win32InitSound(HWND Window, int32 SamplesPerSecond, int32 BufferSi
 			{
 				OutputDebugString("Secondary Buffer CReated Successfully!");
 			}
-			
-			
-
 		}
 		else 
 		{
@@ -177,8 +171,6 @@ internal void Win32InitSound(HWND Window, int32 SamplesPerSecond, int32 BufferSi
 		}
 	}
 }
-
-
 
 internal void RenderWeirdGradient(win32_offscreen_buffer *Buffer, int BlueOffset, int GreenOffset)
 {
@@ -401,7 +393,6 @@ LRESULT CALLBACK Win32MainWindowCallback(
 			// Default win proc that can handle all codes with default behaviour
 			Result = DefWindowProc(Window, Message, WParam, LParam);
 		} break;
-		
 	}
 
 	return Result;
@@ -412,8 +403,6 @@ int WINAPI WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, PSTR CommandLine,
 	Win32LoadXInput();
 	// Init struct with 0 values
 	WNDCLASS WindowClass = {};
-
-
 
 	Win32ResizeDIBSection(&GlobalBackBuffer, 1280, 720);
 
@@ -509,7 +498,6 @@ int WINAPI WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, PSTR CommandLine,
 					}
 				}
 
-				
 				RenderWeirdGradient(&GlobalBackBuffer, BlueOffset, GreenOffset);
 				// Direct sound output test
 
@@ -569,8 +557,6 @@ int WINAPI WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, PSTR CommandLine,
 						// have to unlock to tell direct soudn that you finished writing to the buffer
 						GlobalSecondaryBuffer->Unlock(Region1, Region1Size, Region2, Region2Size);
 					}
-
-					//GlobalSecondaryBuffer->Unlock()
 				}
 				
 				win32_window_dimension Dimension = Win32GetWindowDimension(Window);
