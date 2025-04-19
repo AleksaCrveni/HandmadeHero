@@ -447,7 +447,7 @@ int WINAPI WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, PSTR CommandLine,
 			int16 ToneVolume = 1000;
 
 			Win32InitSound(Window, SamplePerSecond, SecondaryBufferSize);
-			GlobalSecondaryBuffer->Play(0, 0, DSBPLAY_LOOPING);
+			bool32 SoundIsPlaying = false;
 			while (GlobalRunning)
 			{
 				
@@ -508,7 +508,11 @@ int WINAPI WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, PSTR CommandLine,
 					DWORD BytesToWrite;
 					// we mod (%) to get remainder which is pretty much where we are because its ring buffer
 					DWORD ByteToLock = RunningSampleIndex*BytesPerSample % SecondaryBufferSize;
-					if (ByteToLock > PlayCursor)
+					if (ByteToLock == PlayCursor)
+					{
+						
+					}
+					else if (ByteToLock > PlayCursor)
 					{ // ByteToLock is in front of PlayCursor, we have to handle 2 regions
 						// Day 008 ~45min in case I forget how this works
 						BytesToWrite = SecondaryBufferSize - ByteToLock;
@@ -558,13 +562,18 @@ int WINAPI WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, PSTR CommandLine,
 						GlobalSecondaryBuffer->Unlock(Region1, Region1Size, Region2, Region2Size);
 					}
 				}
-				
+				if (!SoundIsPlaying)
+				{
+					GlobalSecondaryBuffer->Play(0, 0, DSBPLAY_LOOPING);	
+					SoundIsPlaying = true;
+				}
 				win32_window_dimension Dimension = Win32GetWindowDimension(Window);
-						Win32CopyBufferToWindow(
-							DeviceContext, Dimension.Width, Dimension.Height,
-							&GlobalBackBuffer);
-						++BlueOffset;
-						GreenOffset += 2;
+				Win32CopyBufferToWindow(
+					DeviceContext, Dimension.Width, Dimension.Height,
+					&GlobalBackBuffer);
+
+				++BlueOffset;
+				GreenOffset += 2;
 			}
 		} 
 		else
