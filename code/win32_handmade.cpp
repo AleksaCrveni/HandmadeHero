@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <xinput.h>
 #include <dsound.h>
+#include <math.h>
 
 #define internal static 
 #define local_persist static
@@ -18,6 +19,9 @@ typedef uint8_t uint8;
 typedef uint16_t uint16;
 typedef uint32_t uint32;
 typedef uint64_t uint64;
+
+typedef float real32;
+typedef double real64;
 
 struct win32_offscreen_buffer
 {
@@ -440,8 +444,8 @@ int WINAPI WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, PSTR CommandLine,
 			// Close to middle C, Hz is sample per second
 			int ToneHz = 256;
 			uint32 RunningSampleIndex = 0;
-			int SquareWavePeriod = SamplePerSecond / ToneHz;
-			int HalfSquareWavePeriod = SquareWavePeriod / 2;
+			int WavePeriod = SamplePerSecond / ToneHz;
+			int HalfWavePeriod = WavePeriod / 2;
 			int BytesPerSample = sizeof(int16)*2;
 			int SecondaryBufferSize = SamplePerSecond*BytesPerSample;
 			int16 ToneVolume = 1000;
@@ -510,7 +514,7 @@ int WINAPI WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, PSTR CommandLine,
 					DWORD ByteToLock = RunningSampleIndex*BytesPerSample % SecondaryBufferSize;
 					if (ByteToLock == PlayCursor)
 					{
-						
+						BytesToWrite = SecondaryBufferSize;
 					}
 					else if (ByteToLock > PlayCursor)
 					{ // ByteToLock is in front of PlayCursor, we have to handle 2 regions
@@ -537,23 +541,23 @@ int WINAPI WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, PSTR CommandLine,
 					{
 						// TODO Assert that region1&2Size are valid
 
-						int16 *SampleOut  = (int16 *)Region1;
+						int16 *SampleOut = (int16 *)Region1;
 						DWORD Region1SampleCount = Region1Size/BytesPerSample;
-						DWORD Region2SampleCount = Region2Size/BytesPerSample;
 
 						for (DWORD SampleIndex = 0; SampleIndex < Region1SampleCount; ++SampleIndex)
 						{
 							// We are basically getting which wave period we are on, so we know to write "top" or "bottom"
-							int16 SampleValue = ((RunningSampleIndex / (HalfSquareWavePeriod / 2)) % 2) ? ToneVolume : -ToneVolume;
+							int16 SampleValue = ((RunningSampleIndex / (HalfWavePeriod / 2)) % 2) ? ToneVolume : -ToneVolume;
 							*SampleOut++ = SampleValue;
 							*SampleOut++ = SampleValue;
 							++RunningSampleIndex;
 						}
 
-						SampleOut  = (int16 *)Region2;
+						SampleOut = (int16 *)Region2;
+						DWORD Region2SampleCount = Region2Size/BytesPerSample;
 						for (DWORD SampleIndex = 0; SampleIndex < Region2SampleCount; ++SampleIndex)
 						{ 
-							int16 SampleValue = ((RunningSampleIndex / (HalfSquareWavePeriod / 2)) % 2) ? ToneVolume : -ToneVolume;
+							int16 SampleValue = ((RunningSampleIndex / (HalfWavePeriod / 2)) % 2) ? ToneVolume : -ToneVolume;
 							*SampleOut++ = SampleValue;
 							*SampleOut++ = SampleValue;
 							++RunningSampleIndex;
