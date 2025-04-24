@@ -94,6 +94,13 @@ internal void Win32LoadXInput()
 	// so if can't be loaded program will still work because we hgave defined default function stubs
 
 	HMODULE XInputLibrary = LoadLibrary("xinput1_4.dll");
+
+	if (!XInputLibrary)
+	{
+		// TODO Diagnostics
+		XInputLibrary = LoadLibrary("xinput9_1_0.dll");
+	}
+
 	if (!XInputLibrary)
 	{
 		// TODO Diagnostics
