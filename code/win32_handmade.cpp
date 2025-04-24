@@ -51,6 +51,8 @@ struct win32_sound_output
 	int BytesPerSample;
 	int SecondaryBufferSize;
 	int16 ToneVolume;
+	real32 TSine;
+	int LatencySampleCount;
 };
 
 global_variable bool GlobalRunning;
@@ -438,12 +440,12 @@ internal void Win32FillSoundBuffer(win32_sound_output *SoundOutput, DWORD ByteTo
 
 		for (DWORD SampleIndex = 0; SampleIndex < Region1SampleCount; ++SampleIndex)
 		{
-			real32 T = 2.0f * Pi32 *((real32)SoundOutput->RunningSampleIndex / (real32)SoundOutput->WavePeriod);
-			real32 SineValue = sinf(T);
+			real32 SineValue = sinf(SoundOutput->TSine);
 			// Sin give number between -1 and 1 so we want to scale it to tone volume
 			int16 SampleValue = int16(SineValue * SoundOutput->ToneVolume);
 			*SampleOut++ = SampleValue;
 			*SampleOut++ = SampleValue;
+			SoundOutput->TSine += 2.0f * Pi32 * 1.0f / (real32)SoundOutput->WavePeriod;
 			++SoundOutput->RunningSampleIndex;
 		}
 
@@ -451,12 +453,13 @@ internal void Win32FillSoundBuffer(win32_sound_output *SoundOutput, DWORD ByteTo
 		DWORD Region2SampleCount = Region2Size/SoundOutput->BytesPerSample;
 		for (DWORD SampleIndex = 0; SampleIndex < Region2SampleCount; ++SampleIndex)
 		{ 
-			real32 T = 2.0f * Pi32 *((real32)SoundOutput->RunningSampleIndex / (real32)SoundOutput->WavePeriod);
-			real32 SineValue = sinf(T);
+			
+			real32 SineValue = sinf(SoundOutput->TSine);
 			// Sin give number between -1 and 1 so we want to scale it to tone volume
 			int16 SampleValue = int16(SineValue * SoundOutput->ToneVolume);
 			*SampleOut++ = SampleValue;
 			*SampleOut++ = SampleValue;
+			SoundOutput->TSine += 2.0f * Pi32 * 1.0f / (real32)SoundOutput->WavePeriod;
 			++SoundOutput->RunningSampleIndex;
 		}
 		// have to unlock to tell direct soudn that you finished writing to the buffer
@@ -514,9 +517,10 @@ int WINAPI WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, PSTR CommandLine,
 			SoundOutput.BytesPerSample = sizeof(int16)*2;
 			SoundOutput.SecondaryBufferSize = SoundOutput.SamplePerSecond * SoundOutput.BytesPerSample;
 			SoundOutput.ToneVolume = 3000;
-
+			// we will write 1/15th of a second ahead of cursor
+			SoundOutput.LatencySampleCount =  SoundOutput.SamplePerSecond / 15;
 			Win32InitSound(Window, SoundOutput.SamplePerSecond, SoundOutput.SecondaryBufferSize);
-			Win32FillSoundBuffer(&SoundOutput, 0, SoundOutput.SecondaryBufferSize);
+			Win32FillSoundBuffer(&SoundOutput, 0, SoundOutput.LatencySampleCount * SoundOutput.BytesPerSample);
 			GlobalSecondaryBuffer->Play(0, 0, DSBPLAY_LOOPING);
 
 			while (GlobalRunning)
@@ -579,19 +583,21 @@ int WINAPI WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, PSTR CommandLine,
 					DWORD BytesToWrite;
 					// we mod (%) to get remainder which is pretty much where we are because its ring buffer
 					DWORD ByteToLock = (SoundOutput.RunningSampleIndex * SoundOutput.BytesPerSample) % SoundOutput.SecondaryBufferSize;
-					if (ByteToLock == PlayCursor)
-					{
-						BytesToWrite = 0;
-					}
-					else if (ByteToLock > PlayCursor)
+
+					// Mod by buffer size because Targetcursor can reach the end and wrap
+					DWORD TargetCursor = (PlayCursor +
+														 	 (SoundOutput.LatencySampleCount * SoundOutput.BytesPerSample)) %
+															 SoundOutput.SecondaryBufferSize;
+
+					if (ByteToLock > TargetCursor)
 					{ // ByteToLock is in front of PlayCursor, we have to handle 2 regions
 						// Day 008 ~45min in case I forget how this works
 						BytesToWrite = SoundOutput.SecondaryBufferSize - ByteToLock;
-						BytesToWrite += PlayCursor;
+						BytesToWrite += TargetCursor;
 					}
 					else
 					{
-						BytesToWrite = PlayCursor - ByteToLock;
+						BytesToWrite = TargetCursor - ByteToLock;
 					}
 				
 					Win32FillSoundBuffer(&SoundOutput, ByteToLock, BytesToWrite);
