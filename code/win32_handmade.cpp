@@ -4,6 +4,7 @@
 #include <xinput.h>
 #include <dsound.h>
 #include <math.h>
+#include <stdio.h>
 
 #define internal static 
 #define local_persist static
@@ -477,6 +478,10 @@ internal void Win32FillSoundBuffer(win32_sound_output *SoundOutput, DWORD ByteTo
 
 int WINAPI WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, PSTR CommandLine, int ShowCode)
 {
+	LARGE_INTEGER PerfCounterFreqResult;
+	QueryPerformanceFrequency(&PerfCounterFreqResult);
+	int64 PerfCounterFreq = PerfCounterFreqResult.QuadPart;
+
 	Win32LoadXInput();
 	// Init struct with 0 values
 	WNDCLASS WindowClass = {};
@@ -490,6 +495,8 @@ int WINAPI WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, PSTR CommandLine,
 	WindowClass.hInstance = Instance;
 	// WindowClass.hIcon
 	WindowClass.lpszClassName = "HandmadeHeroWindowClass";
+	
+
 	if (RegisterClass(&WindowClass))
 	{
 		HWND Window = 
@@ -529,6 +536,11 @@ int WINAPI WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, PSTR CommandLine,
 			Win32InitSound(Window, SoundOutput.SamplePerSecond, SoundOutput.SecondaryBufferSize);
 			Win32FillSoundBuffer(&SoundOutput, 0, SoundOutput.LatencySampleCount * SoundOutput.BytesPerSample);
 			GlobalSecondaryBuffer->Play(0, 0, DSBPLAY_LOOPING);
+
+			LARGE_INTEGER LastCounter;
+			QueryPerformanceCounter(&LastCounter);
+
+			int64 LastCycleCount = __rdtsc();
 
 			while (GlobalRunning)
 			{
@@ -616,6 +628,27 @@ int WINAPI WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, PSTR CommandLine,
 
 				++BlueOffset;
 				GreenOffset += 2;
+
+				LARGE_INTEGER EndCounter;
+				int64 EndCycleCount = __rdtsc();
+				QueryPerformanceCounter(&EndCounter);
+				
+
+
+				int64 CounterElapsed = EndCounter.QuadPart - LastCounter.QuadPart;
+				real32 MSPerFrame = (real32)(((1000.0f*(real32)CounterElapsed) / (real32)PerfCounterFreq));
+				//int32 d = (CounterElapsed * (1/PerfCounterFreq));
+				real32 FPS = (real32)PerfCounterFreq / (real32)CounterElapsed;
+				int64 CyclesElapsed = EndCycleCount - LastCycleCount;
+				// Mega cycles per second - so whatever value here we executed MCPF * 1000 * 1000 instructions
+				// this is just for easier viewing 
+				real32 MCPF = (real32)CyclesElapsed / (1000.0f * 1000.0f);
+				char Buffer[256];
+				
+				sprintf(Buffer, "Milliseconds/frame: %fms FPS: %f Cycles: %f \n", MSPerFrame, FPS, MCPF);
+				OutputDebugString(Buffer);
+				LastCounter = EndCounter;
+				LastCycleCount = EndCycleCount;
 			}
 		} 
 		else
