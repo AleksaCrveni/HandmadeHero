@@ -540,7 +540,7 @@ int WINAPI WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, PSTR CommandLine,
 			LARGE_INTEGER LastCounter;
 			QueryPerformanceCounter(&LastCounter);
 
-			int64 LastCycleCount = __rdtsc();
+			uint64 LastCycleCount = __rdtsc();
 
 			while (GlobalRunning)
 			{
@@ -630,7 +630,7 @@ int WINAPI WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, PSTR CommandLine,
 				GreenOffset += 2;
 
 				LARGE_INTEGER EndCounter;
-				int64 EndCycleCount = __rdtsc();
+				uint64 EndCycleCount = __rdtsc();
 				QueryPerformanceCounter(&EndCounter);
 				
 
@@ -639,7 +639,7 @@ int WINAPI WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, PSTR CommandLine,
 				real32 MSPerFrame = (real32)(((1000.0f*(real32)CounterElapsed) / (real32)PerfCounterFreq));
 				//int32 d = (CounterElapsed * (1/PerfCounterFreq));
 				real32 FPS = (real32)PerfCounterFreq / (real32)CounterElapsed;
-				int64 CyclesElapsed = EndCycleCount - LastCycleCount;
+				uint64 CyclesElapsed = EndCycleCount - LastCycleCount;
 				// Mega cycles per second - so whatever value here we executed MCPF * 1000 * 1000 instructions
 				// this is just for easier viewing 
 				real32 MCPF = (real32)CyclesElapsed / (1000.0f * 1000.0f);
