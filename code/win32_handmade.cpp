@@ -6,6 +6,9 @@
 #include <math.h>
 #include <stdio.h>
 
+#include "handmade.cpp"
+
+
 #define internal static 
 #define local_persist static
 #define global_variable static
@@ -476,6 +479,11 @@ internal void Win32FillSoundBuffer(win32_sound_output *SoundOutput, DWORD ByteTo
 
 }
 
+void * PlatformLoadFile(char *FileName)
+{
+	return 0;
+}
+
 int WINAPI WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, PSTR CommandLine, int ShowCode)
 {
 	LARGE_INTEGER PerfCounterFreqResult;
@@ -633,7 +641,7 @@ int WINAPI WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, PSTR CommandLine,
 				uint64 EndCycleCount = __rdtsc();
 				QueryPerformanceCounter(&EndCounter);
 				
-
+				MainLoop();
 
 				int64 CounterElapsed = EndCounter.QuadPart - LastCounter.QuadPart;
 				real32 MSPerFrame = (real32)(((1000.0f*(real32)CounterElapsed) / (real32)PerfCounterFreq));

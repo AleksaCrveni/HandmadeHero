@@ -1,0 +1,1 @@
+void* PlatformLoadFile(char* FileName);
