@@ -1,19 +1,4 @@
-#include <windows.h>
-#include <winuser.h>
 #include <stdint.h>
-#include <xinput.h>
-#include <dsound.h>
-#include <math.h>
-#include <stdio.h>
-
-#include "handmade.cpp"
-
-
-#define internal static 
-#define local_persist static
-#define global_variable static
-
-#define Pi32 3.14159265359f
 
 typedef int8_t int8;
 typedef int16_t int16;
@@ -28,6 +13,21 @@ typedef uint64_t uint64;
 
 typedef float real32;
 typedef double real64;
+
+#define internal static 
+#define local_persist static
+#define global_variable static
+
+#define Pi32 3.14159265359f
+
+#include "handmade.cpp"
+
+#include <windows.h>
+#include <winuser.h>
+#include <xinput.h>
+#include <dsound.h>
+#include <math.h>
+#include <stdio.h>
 
 
 struct win32_offscreen_buffer
@@ -202,62 +202,6 @@ internal void Win32InitSound(HWND Window, int32 SamplesPerSecond, int32 BufferSi
 			// TODO Diagnostics
 		}
 	}
-}
-
-internal void RenderWeirdGradient(win32_offscreen_buffer *Buffer, int BlueOffset, int GreenOffset)
-{
-	// TODO lets see what o ptimized does
-	// byte array pretty much
-	uint8 *Row = (uint8 *)Buffer->Memory;
-	for (int Y = 0; Y < Buffer->Height; ++Y)
-	{
-		// uint8 *Pixel  = (uint8 *)Row;
-		uint32 *Pixel = (uint32 *)Row;
-		for (int X = 0; X < Buffer->Width; ++X)
-		{
-			/* 8 - bit red 8 bits of green 8 bits of blue and 8 bits of padding
-			Pixel in memory: RR GG BB xx
-			But due to little endian format of our CPU bytes are loaded in a way where
-			least significant byte is stored at  lowest memory address and so on, so it appears that bytes are read from right to left
-			so RR GG BB xx will be read as 0xXXBBGGRR (backwards)
-			
-			BUT windows people didn't like that so they reorder it in memory where blue bytes are first  so in memory its BB GG RR xx
-			0xXXRRGGBB
-			
-			// Blue bits
-			*Pixel = (uint8)(X + BlueOffset);
-			++Pixel;
-
-			// Green bits
-			*Pixel = (uint8)(Y + GreenOffset);
-			++Pixel;
-
-			// Red bits
-			*Pixel = 0;
-			++Pixel;
-
-			// Padding 
-			*Pixel = 0;
-			++Pixel;
-			*/
-
-			uint8 Blue = (X + BlueOffset);
-			uint8 Green = (Y + GreenOffset);
-			/*
-				Memory:				BB GG RR xx
-				Register:  		xx RR GG BB
-
-			*/
-			// Shift green and or blue to get 32 bit value since we Pixel pointer is uint32
-			uint32 res = ((Green << 8) | Blue);
-			*Pixel++ = res;
-
-		}
-
-		// Pointer arithimic, pretty much moving pointer to next row (memory is 1D but we think of it as 2D since its bitmap)
-		Row += Buffer->Pitch;
-	}
-	
 }
 
 // DIB => Device Independent Bit 
@@ -600,7 +544,12 @@ int WINAPI WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, PSTR CommandLine,
 					}
 				}
 
-				RenderWeirdGradient(&GlobalBackBuffer, BlueOffset, GreenOffset);
+				game_offscreen_buffer GameBuffer = {}; // clear to zero!
+				GameBuffer.Memory = GlobalBackBuffer.Memory;
+				GameBuffer.Width = GlobalBackBuffer.Width;
+				GameBuffer.Height = GlobalBackBuffer.Height;
+				GameBuffer.Pitch = GlobalBackBuffer.Pitch;
+				GameUpdateAndRender(&GameBuffer, BlueOffset, GreenOffset);
 				// Direct sound output test
 
 				DWORD WriteCursor;
@@ -641,7 +590,7 @@ int WINAPI WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, PSTR CommandLine,
 				uint64 EndCycleCount = __rdtsc();
 				QueryPerformanceCounter(&EndCounter);
 				
-				MainLoop();
+				
 
 				int64 CounterElapsed = EndCounter.QuadPart - LastCounter.QuadPart;
 				real32 MSPerFrame = (real32)(((1000.0f*(real32)CounterElapsed) / (real32)PerfCounterFreq));
