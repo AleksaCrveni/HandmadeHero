@@ -374,7 +374,29 @@ LRESULT CALLBACK Win32MainWindowCallback(
 	return Result;
 }
 
-internal void Win32FillSoundBuffer(win32_sound_output *SoundOutput, DWORD ByteToLock, DWORD BytesToWrite)
+
+internal void Win32ClearBuffer(win32_sound_output *SoundOutput)
+{
+	VOID *Region1;
+	DWORD Region1Size;
+	VOID *Region2;
+	DWORD Region2Size;
+	if (SUCCEEDED(GlobalSecondaryBuffer->Lock(0,SoundOutput->SecondaryBufferSize,
+		&Region1, &Region1Size,
+		&Region2, &Region2Size,
+		0)))
+	{
+		uint8 *DestSample = (uint8 *)Region1;
+		for (DWORD ByteIndex = 0; ByteIndex < Region1Size; ++ByteIndex)
+		{
+			// set to 0
+			*DestSample++ = 0;
+		}
+	}
+}
+
+internal void Win32FillSoundBuffer(win32_sound_output *SoundOutput, DWORD ByteToLock,
+																	DWORD BytesToWrite, game_sound_output_buffer *SourceBuffer)
 {
 		// We can have 2 Regions if write pointer is near the end and we ask to write too much it will try to write lefover
 		// from the beggining of the buffer (Region 2)
@@ -390,31 +412,24 @@ internal void Win32FillSoundBuffer(win32_sound_output *SoundOutput, DWORD ByteTo
 	{
 		// TODO Assert that region1&2Size are valid
 
-		int16 *SampleOut = (int16 *)Region1;
+		int16 *DestSample = (int16 *)Region1;
+		int16 *SourceSample = SourceBuffer->Samples;
 		DWORD Region1SampleCount = Region1Size / SoundOutput->BytesPerSample;
 
 		for (DWORD SampleIndex = 0; SampleIndex < Region1SampleCount; ++SampleIndex)
 		{
-			real32 SineValue = sinf(SoundOutput->TSine);
-			// Sin give number between -1 and 1 so we want to scale it to tone volume
-			int16 SampleValue = int16(SineValue * SoundOutput->ToneVolume);
-			*SampleOut++ = SampleValue;
-			*SampleOut++ = SampleValue;
-			SoundOutput->TSine += 2.0f * Pi32 * 1.0f / (real32)SoundOutput->WavePeriod;
+			// Just copy, if you see perf issue, fix
+			*DestSample++ = *SourceSample++;
+			*DestSample++ = *SourceSample++;
 			++SoundOutput->RunningSampleIndex;
 		}
 
-		SampleOut = (int16 *)Region2;
+		DestSample = (int16 *)Region2;
 		DWORD Region2SampleCount = Region2Size/SoundOutput->BytesPerSample;
 		for (DWORD SampleIndex = 0; SampleIndex < Region2SampleCount; ++SampleIndex)
 		{ 
-			
-			real32 SineValue = sinf(SoundOutput->TSine);
-			// Sin give number between -1 and 1 so we want to scale it to tone volume
-			int16 SampleValue = int16(SineValue * SoundOutput->ToneVolume);
-			*SampleOut++ = SampleValue;
-			*SampleOut++ = SampleValue;
-			SoundOutput->TSine += 2.0f * Pi32 * 1.0f / (real32)SoundOutput->WavePeriod;
+			*DestSample++ = *SourceSample++;
+			*DestSample++ = *SourceSample++;
 			++SoundOutput->RunningSampleIndex;
 		}
 		// have to unlock to tell direct soudn that you finished writing to the buffer
@@ -486,7 +501,7 @@ int WINAPI WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, PSTR CommandLine,
 			// we will write 1/15th of a second ahead of cursor
 			SoundOutput.LatencySampleCount =  SoundOutput.SamplePerSecond / 15;
 			Win32InitSound(Window, SoundOutput.SamplePerSecond, SoundOutput.SecondaryBufferSize);
-			Win32FillSoundBuffer(&SoundOutput, 0, SoundOutput.LatencySampleCount * SoundOutput.BytesPerSample);
+			Win32ClearBuffer(&SoundOutput);
 			GlobalSecondaryBuffer->Play(0, 0, DSBPLAY_LOOPING);
 
 			LARGE_INTEGER LastCounter;
@@ -584,7 +599,7 @@ int WINAPI WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, PSTR CommandLine,
 						BytesToWrite = TargetCursor - ByteToLock;
 					}
 				
-					Win32FillSoundBuffer(&SoundOutput, ByteToLock, BytesToWrite);
+					Win32FillSoundBuffer(&SoundOutput, ByteToLock, BytesToWrite, &SoundBuffer);
 				}
 				win32_window_dimension Dimension = Win32GetWindowDimension(Window);
 				Win32CopyBufferToWindow(
