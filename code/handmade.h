@@ -8,10 +8,15 @@ struct game_offscreen_buffer
     int Pitch;
 };
 
+struct game_sound_output_buffer
+{
+    int SamplePerSecond;
+    int SampleCount;
+    int16 *Samples;
+};
 // Services that the platform layer provides to the game.
 
 // Services that the game provides to the platform layer.
-void GameUpdateAndRender(game_offscreen_buffer *Buffer, int a, int b);
-
+void GameUpdateAndRender(game_offscreen_buffer *Buffer, int a, int b, game_sound_output_buffer *SoundBuffer);
 #define HANDMADE_H
 #endif

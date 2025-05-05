@@ -1,5 +1,24 @@
 #include "handmade.h"
 
+internal void GameOutputSound(game_sound_output_buffer *SoundBuffer)
+{
+	local_persist real32 TSine;
+	int16 ToneVolume = 3000;
+	int ToneHz = 256;
+	int WavePeriod = SoundBuffer->SamplePerSecond / ToneHz;
+
+	int16 *SampleOut = SoundBuffer->Samples;
+	for (int SampleIndex = 0; SampleIndex < SoundBuffer->SampleCount; ++SampleIndex)
+	{
+		real32 SineValue = sinf(TSine);
+		// Sin give number between -1 and 1 so we want to scale it to tone volume
+		int16 SampleValue = int16(SineValue * ToneVolume);
+		*SampleOut++ = SampleValue;
+		*SampleOut++ = SampleValue;
+		TSine += 2.0f * Pi32 * 1.0f / (real32)WavePeriod;
+	}
+}
+
 internal void RenderWeirdGradient(game_offscreen_buffer *Buffer, int BlueOffset, int GreenOffset)
 {
 	// TODO lets see what o ptimized does
@@ -56,8 +75,10 @@ internal void RenderWeirdGradient(game_offscreen_buffer *Buffer, int BlueOffset,
 	
 }
 
-void GameUpdateAndRender(game_offscreen_buffer *Buffer, int a , int b)
+void GameUpdateAndRender(game_offscreen_buffer *Buffer, int a , int b, game_sound_output_buffer *SoundBuffer)
 {
+	// Allow sample offsets here for more robust platform options
+	GameOutputSound(SoundBuffer);
 	RenderWeirdGradient(Buffer,a, b);
 	return;
 }

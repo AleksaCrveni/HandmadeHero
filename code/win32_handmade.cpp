@@ -20,13 +20,13 @@ typedef double real64;
 
 #define Pi32 3.14159265359f
 
+#include <math.h>
 #include "handmade.cpp"
 
 #include <windows.h>
 #include <winuser.h>
 #include <xinput.h>
 #include <dsound.h>
-#include <math.h>
 #include <stdio.h>
 
 
@@ -549,7 +549,15 @@ int WINAPI WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, PSTR CommandLine,
 				GameBuffer.Width = GlobalBackBuffer.Width;
 				GameBuffer.Height = GlobalBackBuffer.Height;
 				GameBuffer.Pitch = GlobalBackBuffer.Pitch;
-				GameUpdateAndRender(&GameBuffer, BlueOffset, GreenOffset);
+
+				// its very small so we can put it on the stack. *2 because we are stereo
+				// / by 30 for 30 target fps
+				int16 Samples[(48000/30) * 2];
+				game_sound_output_buffer SoundBuffer = {};
+				SoundBuffer.SamplePerSecond = SoundOutput.SamplePerSecond;
+				SoundBuffer.SampleCount = SoundBuffer.SamplePerSecond / 30;
+				SoundBuffer.Samples = Samples;
+				GameUpdateAndRender(&GameBuffer, BlueOffset, GreenOffset, &SoundBuffer);
 				// Direct sound output test
 
 				DWORD WriteCursor;
