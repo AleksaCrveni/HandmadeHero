@@ -17,6 +17,6 @@ struct game_sound_output_buffer
 // Services that the platform layer provides to the game.
 
 // Services that the game provides to the platform layer.
-void GameUpdateAndRender(game_offscreen_buffer *Buffer, int a, int b, game_sound_output_buffer *SoundBuffer);
+void GameUpdateAndRender(game_offscreen_buffer *Buffer, int BlueOffset, int GreenOffset, game_sound_output_buffer *SoundBuffer);
 #define HANDMADE_H
 #endif
