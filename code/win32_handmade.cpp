@@ -207,7 +207,6 @@ internal void Win32InitSound(HWND Window, int32 SamplesPerSecond, int32 BufferSi
 // DIB => Device Independent Bit 
 internal void Win32ResizeDIBSection(win32_offscreen_buffer *Buffer, int Width, int Height)
 {
-
 	// have to free memory if we are going to allocate again
 	// and we have to allocate because we are resizing window so width and height of our bitmap chjanges
 	if (Buffer->Memory)
@@ -392,6 +391,13 @@ internal void Win32ClearBuffer(win32_sound_output *SoundOutput)
 			// set to 0
 			*DestSample++ = 0;
 		}
+		DestSample = (uint8 *)Region2;
+		for (DWORD ByteIndex = 0; ByteIndex < Region2Size; ++ByteIndex)
+		{
+			// set to 0
+			*DestSample++ = 0;
+		}
+		GlobalSecondaryBuffer->Unlock(Region1, Region1Size, Region2, Region2Size);
 	}
 }
 
@@ -559,34 +565,22 @@ int WINAPI WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, PSTR CommandLine,
 					}
 				}
 
-				game_offscreen_buffer GameBuffer = {}; // clear to zero!
-				GameBuffer.Memory = GlobalBackBuffer.Memory;
-				GameBuffer.Width = GlobalBackBuffer.Width;
-				GameBuffer.Height = GlobalBackBuffer.Height;
-				GameBuffer.Pitch = GlobalBackBuffer.Pitch;
-
-				// its very small so we can put it on the stack. *2 because we are stereo
-				// / by 30 for 30 target fps
-				int16 Samples[(48000/30) * 2];
-				game_sound_output_buffer SoundBuffer = {};
-				SoundBuffer.SamplePerSecond = SoundOutput.SamplePerSecond;
-				SoundBuffer.SampleCount = SoundBuffer.SamplePerSecond / 30;
-				SoundBuffer.Samples = Samples;
-				GameUpdateAndRender(&GameBuffer, BlueOffset, GreenOffset, &SoundBuffer);
-				// Direct sound output test
-
+				DWORD ByteToLock;
+				DWORD BytesToWrite;
 				DWORD WriteCursor;
 				DWORD PlayCursor;
+				DWORD TargetCursor;
+				bool32 SoundIsValid = false;
 				if (SUCCEEDED(GlobalSecondaryBuffer->GetCurrentPosition(&PlayCursor, &WriteCursor)))
 				{
-					DWORD BytesToWrite;
+					
 					// we mod (%) to get remainder which is pretty much where we are because its ring buffer
-					DWORD ByteToLock = (SoundOutput.RunningSampleIndex * SoundOutput.BytesPerSample) % SoundOutput.SecondaryBufferSize;
+					ByteToLock = ((SoundOutput.RunningSampleIndex * SoundOutput.BytesPerSample) % SoundOutput.SecondaryBufferSize);
 
 					// Mod by buffer size because Targetcursor can reach the end and wrap
-					DWORD TargetCursor = (PlayCursor +
+					TargetCursor = ((PlayCursor +
 														 	 (SoundOutput.LatencySampleCount * SoundOutput.BytesPerSample)) %
-															 SoundOutput.SecondaryBufferSize;
+															 SoundOutput.SecondaryBufferSize);
 
 					if (ByteToLock > TargetCursor)
 					{ // ByteToLock is in front of PlayCursor, we have to handle 2 regions
@@ -598,7 +592,28 @@ int WINAPI WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, PSTR CommandLine,
 					{
 						BytesToWrite = TargetCursor - ByteToLock;
 					}
+					SoundIsValid = true;
+				}
+
+				game_offscreen_buffer GameBuffer = {}; // clear to zero!
+				GameBuffer.Memory = GlobalBackBuffer.Memory;
+				GameBuffer.Width = GlobalBackBuffer.Width;
+				GameBuffer.Height = GlobalBackBuffer.Height;
+				GameBuffer.Pitch = GlobalBackBuffer.Pitch;
+
+				// its very small so we can put it on the stack. *2 because we are stereo
+				// / by 30 for 30 target fps
+				int16 Samples[48000* 2];
+				game_sound_output_buffer SoundBuffer = {};
+				SoundBuffer.SamplePerSecond = SoundOutput.SamplePerSecond;
+				SoundBuffer.SampleCount = BytesToWrite / SoundOutput.BytesPerSample;
+				SoundBuffer.Samples = Samples;
+				GameUpdateAndRender(&GameBuffer, BlueOffset, GreenOffset, &SoundBuffer);
+				// Direct sound output test
+
 				
+				if (SoundIsValid)
+				{	
 					Win32FillSoundBuffer(&SoundOutput, ByteToLock, BytesToWrite, &SoundBuffer);
 				}
 				win32_window_dimension Dimension = Win32GetWindowDimension(Window);
