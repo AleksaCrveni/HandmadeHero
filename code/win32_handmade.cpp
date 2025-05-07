@@ -28,7 +28,7 @@ typedef double real64;
 #include <xinput.h>
 #include <dsound.h>
 #include <stdio.h>
-
+#include <malloc.h>
 
 struct win32_offscreen_buffer
 {
@@ -510,6 +510,7 @@ int WINAPI WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, PSTR CommandLine,
 			Win32ClearBuffer(&SoundOutput);
 			GlobalSecondaryBuffer->Play(0, 0, DSBPLAY_LOOPING);
 
+			int16 *Samples = (int16 *)VirtualAlloc(0, SoundOutput.SecondaryBufferSize, MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
 			LARGE_INTEGER LastCounter;
 			QueryPerformanceCounter(&LastCounter);
 
@@ -571,6 +572,8 @@ int WINAPI WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, PSTR CommandLine,
 				DWORD PlayCursor;
 				DWORD TargetCursor;
 				bool32 SoundIsValid = false;
+
+				// Thighen up sound logic so that we knowwhere we should be writing
 				if (SUCCEEDED(GlobalSecondaryBuffer->GetCurrentPosition(&PlayCursor, &WriteCursor)))
 				{
 					
@@ -601,16 +604,13 @@ int WINAPI WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, PSTR CommandLine,
 				GameBuffer.Height = GlobalBackBuffer.Height;
 				GameBuffer.Pitch = GlobalBackBuffer.Pitch;
 
-				// its very small so we can put it on the stack. *2 because we are stereo
-				// / by 30 for 30 target fps
-				int16 Samples[48000* 2];
+				
 				game_sound_output_buffer SoundBuffer = {};
 				SoundBuffer.SamplePerSecond = SoundOutput.SamplePerSecond;
 				SoundBuffer.SampleCount = BytesToWrite / SoundOutput.BytesPerSample;
 				SoundBuffer.Samples = Samples;
 				GameUpdateAndRender(&GameBuffer, BlueOffset, GreenOffset, &SoundBuffer);
 				// Direct sound output test
-
 				
 				if (SoundIsValid)
 				{	
