@@ -574,6 +574,7 @@ int WINAPI WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, PSTR CommandLine,
 				bool32 SoundIsValid = false;
 
 				// Thighen up sound logic so that we knowwhere we should be writing
+				// and anticipate time spent in the game update
 				if (SUCCEEDED(GlobalSecondaryBuffer->GetCurrentPosition(&PlayCursor, &WriteCursor)))
 				{
 					
