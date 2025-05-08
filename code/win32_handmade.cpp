@@ -566,11 +566,11 @@ int WINAPI WinMain(HINSTANCE Instance, HINSTANCE PrevInstance, PSTR CommandLine,
 					}
 				}
 
-				DWORD ByteToLock;
-				DWORD BytesToWrite;
-				DWORD WriteCursor;
-				DWORD PlayCursor;
-				DWORD TargetCursor;
+				DWORD ByteToLock = 0;
+				DWORD BytesToWrite = 0;
+				DWORD WriteCursor = 0;
+				DWORD PlayCursor = 0;
+				DWORD TargetCursor = 0;
 				bool32 SoundIsValid = false;
 
 				// Thighen up sound logic so that we knowwhere we should be writing
